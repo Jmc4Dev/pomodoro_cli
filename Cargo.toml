@@ -1,0 +1,10 @@
+[package]
+name = "pomodoro_cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = "4.5.27"
+crossterm = "0.28.1"
+notify-rust = "4.11.4"
+rodio = "0.20.1"
