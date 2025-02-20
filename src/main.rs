@@ -1,13 +1,15 @@
 use clap::Parser;
-use std::io::{self, stdout, Write};
+use crossterm::style::{Color, SetForegroundColor, Stylize};
+use crossterm::{cursor, execute, style::Print, terminal};
+use std::io::{self, stdout};
 use std::thread::sleep;
-use std::time::{Duration, Instant};
-use crossterm::terminal::{Clear, ClearType };
-use crossterm::{QueueableCommand, cursor};
+use std::time::Duration;
 
 const WORK_DEFAULT: u8 = 25;
 const REST_DEFAULT: u8 = 5;
 const SESSIONS_DEFAULT: u8 = 1;
+const PROGRESS_UNIT: &str = "█";
+const SECONDS_DELAY: u64 = 1;
 
 /// Pomodoro Client Application
 #[derive(Parser)]
@@ -33,10 +35,7 @@ struct Timer {
 
 impl Timer {
     fn new(minutes: u8, seconds: u8) -> Self {
-        Self {
-            minutes,
-            seconds,
-        }
+        Self { minutes, seconds }
     }
 
     fn get_remaining_time(&self) -> String {
@@ -47,68 +46,116 @@ impl Timer {
     fn subtract_second(&mut self) {
         if self.seconds > 0 {
             self.seconds -= 1;
-        }
-        else if self.minutes > 0 {
-                self.seconds = 59;
-                self.minutes -= 1;
-        }
-        else {
+        } else if self.minutes > 0 {
+            self.seconds = 59;
+            self.minutes -= 1;
+        } else {
             self.minutes = 0;
-                self.seconds = 0;
+            self.seconds = 0;
         }
     }
 }
 
 fn main() -> io::Result<()> {
     let args = Args::parse();
-    let work = args.work;
-    let rest = args.rest;
-    let sessions = args.sessions;
-    let mut stdout = stdout();
+    let working_max = args.work;
+    let resting_max = args.rest;
+    let max_sessions = args.sessions;
+    let current_session = 1;
 
-    // Clear the screen and print at the top of the terminal
-    stdout.queue(Clear(ClearType::All))?.queue(cursor::MoveTo(0, 0))?;
-    stdout.flush()?;
+    let sessions_text = format!("Session {} of {}", current_session, max_sessions);
+    // run a sequence of instructions on the standard output
+    execute!(stdout(), terminal::Clear(terminal::ClearType::All),)?;
 
-    println!("Pomodoro session started!");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        cursor::MoveTo(18, 0),
+        Print("Pomodoro Timer".underlined().bold()),
+        SetForegroundColor(Color::Blue),
+        cursor::MoveTo(18, 2),
+        Print(sessions_text),
+    )?;
 
-    let work_duration = Duration::from_secs(work as u64 * 60);
-    let rest_duration = Duration::from_secs(rest as u64 * 60);
-    let mut work_timer = Timer::new(work, 0);
-    let mut rest_timer = Timer::new(rest, 0);
-    for _ in 0..sessions {
-        print!("{}", work_timer.get_remaining_time());
-        let _ = std::io::stdout().flush();
-        let w_time = Instant::now() + work_duration;
-        while w_time > Instant::now() {
-            let timer = w_time - Instant::now();
-            work_timer.subtract_second();
-            if timer.as_secs() % 5 == 0 {
-                stdout.queue(Clear(ClearType::CurrentLine))?.queue(cursor::MoveTo(0, 1))?;
-                stdout.flush()?;
-                print!("{}", work_timer.get_remaining_time());
-                let _ = std::io::stdout().flush();
+    let work_duration = Duration::from_secs(working_max as u64 * 60);
+    let rest_duration = Duration::from_secs(resting_max as u64 * 60);
+    let mut work_timer = Timer::new(working_max, 0);
+    let mut rest_timer = Timer::new(resting_max, 0);
+    for _ in 0..max_sessions {
+        for i in 0..=working_max {
+            // Using the repeat method, we can print a specific number of characters to the stdout
+            let work = format!(
+                "[{}{}]   {} of {} minutes left. ",
+                PROGRESS_UNIT.repeat(i as usize),
+                " ".repeat((working_max - i) as usize),
+                working_max - i,
+                working_max
+            );
+            let rest = format!(
+                "[{}{}]   {} of {} minutes left. ",
+                PROGRESS_UNIT.repeat(0),
+                " ".repeat(resting_max as usize),
+                resting_max,
+                resting_max
+            );
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                cursor::MoveTo(0, 4),
+                Print(work.to_string()),
+                SetForegroundColor(Color::Red),
+                cursor::MoveTo(0, 5),
+                Print(rest.to_string()),
+                Print("\n\n"),
+            )?;
+
+            if i < working_max {
+                sleep(Duration::from_secs(SECONDS_DELAY));
             }
-            sleep(Duration::new(1, 0));
         }
-        let r_time = Instant::now() + rest_duration;
-        println!("\n\nTime's up! Take a break! 🎉\n");
-        stdout.queue(cursor::MoveTo(0, 5))?;
-        stdout.flush()?;
-        print!("{}", rest_timer.get_remaining_time());
-        let _ = std::io::stdout().flush();
-        while r_time > Instant::now() {
-            let timer = r_time - Instant::now();
-            rest_timer.subtract_second();
-            if timer.as_secs() % 5 == 0 {
-                stdout.queue(Clear(ClearType::CurrentLine))?.queue(cursor::MoveTo(0, 5))?;
-                stdout.flush()?;
-                print!("{}", rest_timer.get_remaining_time());
-                let _ = std::io::stdout().flush();
+
+        for i in 0..=resting_max {
+            // Using the repeat method, we can print a specific number of characters to the stdout
+            let work = format!(
+                "[{}{}]   {} of {} minutes left. ",
+                PROGRESS_UNIT.repeat(working_max as usize),
+                " ".repeat(0),
+                0,
+                working_max
+            );
+            let rest = format!(
+                "[{}{}]   {} of {} minutes left. ",
+                PROGRESS_UNIT.repeat(i as usize),
+                " ".repeat((resting_max - i) as usize),
+                resting_max - i,
+                resting_max
+            );
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                cursor::MoveTo(0, 4),
+                Print(work.to_string()),
+                SetForegroundColor(Color::Red),
+                cursor::MoveTo(0, 5),
+                Print(rest.to_string()),
+                Print("\n\n"),
+            )?;
+
+            if i < resting_max {
+                sleep(Duration::from_secs(SECONDS_DELAY));
             }
-            sleep(Duration::new(1, 0));
         }
-        println!("\n\nThe session is up!!!\n");
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Blue),
+            SetForegroundColor(Color::Blue),
+            cursor::MoveTo(18, 7),
+            Print("Session finished!!".to_string()),
+            Print("\n\n"),
+        )?;
     }
+
     Ok(())
 }
