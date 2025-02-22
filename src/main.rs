@@ -28,42 +28,7 @@ struct Args {
     sessions: u8,
 }
 
-struct Timer {
-    minutes: u8,
-    seconds: u8,
-}
-
-impl Timer {
-    fn new(minutes: u8, seconds: u8) -> Self {
-        Self { minutes, seconds }
-    }
-
-    fn get_remaining_time(&self) -> String {
-        let remaiming_time = format!("{:02}:{:02}", self.minutes, self.seconds);
-        remaiming_time
-    }
-
-    fn subtract_second(&mut self) {
-        if self.seconds > 0 {
-            self.seconds -= 1;
-        } else if self.minutes > 0 {
-            self.seconds = 59;
-            self.minutes -= 1;
-        } else {
-            self.minutes = 0;
-            self.seconds = 0;
-        }
-    }
-}
-
-fn main() -> io::Result<()> {
-    let args = Args::parse();
-    let working_max = args.work;
-    let resting_max = args.rest;
-    let max_sessions = args.sessions;
-    let current_session = 1;
-
-    let sessions_text = format!("Session {} of {}", current_session, max_sessions);
+fn show_header() -> io::Result<()> {
     // run a sequence of instructions on the standard output
     execute!(stdout(), terminal::Clear(terminal::ClearType::All),)?;
 
@@ -72,90 +37,93 @@ fn main() -> io::Result<()> {
         SetForegroundColor(Color::Blue),
         cursor::MoveTo(18, 0),
         Print("Pomodoro Timer".underlined().bold()),
+    )?;
+
+    Ok(())
+}
+
+fn show_sessions(current_session: u8, max_sessions: u8) -> io::Result<()> {
+    let sessions_text = format!("Session {} of {}", current_session, max_sessions);
+    execute!(
+        stdout(),
         SetForegroundColor(Color::Blue),
         cursor::MoveTo(18, 2),
         Print(sessions_text),
+        cursor::MoveTo(18, 7),
+        Print("                  ".to_string()),
+    )?;
+    Ok(())
+}
+
+fn show_footer() -> io::Result<()> {
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        SetForegroundColor(Color::Blue),
+        cursor::MoveTo(18, 7),
+        Print("Session finished!!".to_string()),
+        Print("\n\n"),
+    )?;
+    Ok(())
+}
+
+fn show_progress_bars(work: String, rest: String) -> io::Result<()> {
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        cursor::MoveTo(0, 4),
+        Print(work),
+        SetForegroundColor(Color::Red),
+        cursor::MoveTo(0, 5),
+        Print(rest),
+        Print("\n\n"),
     )?;
 
-    let work_duration = Duration::from_secs(working_max as u64 * 60);
-    let rest_duration = Duration::from_secs(resting_max as u64 * 60);
-    let mut work_timer = Timer::new(working_max, 0);
-    let mut rest_timer = Timer::new(resting_max, 0);
-    for _ in 0..max_sessions {
+    Ok(())
+}
+
+fn get_progress_bar_text(val: usize, max_val: usize) -> String {
+    // Using the repeat method, we can print a specific number of characters to the stdout
+    format!(
+        "[{}{}]   {:02} of {:02} minutes left. ",
+        PROGRESS_UNIT.repeat(val),
+        " ".repeat(max_val - val),
+        max_val - val,
+        max_val
+    )
+}
+
+fn main() -> io::Result<()> {
+    let args = Args::parse();
+    let working_max = args.work;
+    let resting_max = args.rest;
+    let max_sessions = args.sessions;
+
+    show_header()?;
+
+    for s in 1..=max_sessions {
+        show_sessions(s, max_sessions)?;
+
         for i in 0..=working_max {
-            // Using the repeat method, we can print a specific number of characters to the stdout
-            let work = format!(
-                "[{}{}]   {} of {} minutes left. ",
-                PROGRESS_UNIT.repeat(i as usize),
-                " ".repeat((working_max - i) as usize),
-                working_max - i,
-                working_max
-            );
-            let rest = format!(
-                "[{}{}]   {} of {} minutes left. ",
-                PROGRESS_UNIT.repeat(0),
-                " ".repeat(resting_max as usize),
-                resting_max,
-                resting_max
-            );
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                cursor::MoveTo(0, 4),
-                Print(work.to_string()),
-                SetForegroundColor(Color::Red),
-                cursor::MoveTo(0, 5),
-                Print(rest.to_string()),
-                Print("\n\n"),
-            )?;
-
+            let work = get_progress_bar_text(i as usize, working_max as usize);
+            let rest = get_progress_bar_text(0, resting_max as usize);
+            show_progress_bars(work, rest)?;
             if i < working_max {
                 sleep(Duration::from_secs(SECONDS_DELAY));
             }
         }
 
         for i in 0..=resting_max {
-            // Using the repeat method, we can print a specific number of characters to the stdout
-            let work = format!(
-                "[{}{}]   {} of {} minutes left. ",
-                PROGRESS_UNIT.repeat(working_max as usize),
-                " ".repeat(0),
-                0,
-                working_max
-            );
-            let rest = format!(
-                "[{}{}]   {} of {} minutes left. ",
-                PROGRESS_UNIT.repeat(i as usize),
-                " ".repeat((resting_max - i) as usize),
-                resting_max - i,
-                resting_max
-            );
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                cursor::MoveTo(0, 4),
-                Print(work.to_string()),
-                SetForegroundColor(Color::Red),
-                cursor::MoveTo(0, 5),
-                Print(rest.to_string()),
-                Print("\n\n"),
-            )?;
-
+            let work = get_progress_bar_text(working_max as usize, working_max as usize);
+            let rest = get_progress_bar_text(i as usize, resting_max as usize);
+            show_progress_bars(work, rest)?;
             if i < resting_max {
                 sleep(Duration::from_secs(SECONDS_DELAY));
             }
         }
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Blue),
-            SetForegroundColor(Color::Blue),
-            cursor::MoveTo(18, 7),
-            Print("Session finished!!".to_string()),
-            Print("\n\n"),
-        )?;
+
     }
+    show_footer()?;
 
     Ok(())
 }
