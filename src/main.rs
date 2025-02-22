@@ -35,6 +35,8 @@ fn show_header() -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
+        cursor::MoveTo(18, 7),
+        terminal::Clear(terminal::ClearType::CurrentLine),
         cursor::MoveTo(18, 0),
         Print("Pomodoro Timer".underlined().bold()),
     )?;
@@ -50,18 +52,19 @@ fn show_sessions(current_session: u8, max_sessions: u8) -> io::Result<()> {
         cursor::MoveTo(18, 2),
         Print(sessions_text),
         cursor::MoveTo(18, 7),
-        Print("                  ".to_string()),
+        terminal::Clear(terminal::ClearType::CurrentLine),
     )?;
     Ok(())
 }
 
-fn show_footer() -> io::Result<()> {
+fn show_footer(text: &str) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
         SetForegroundColor(Color::Blue),
         cursor::MoveTo(18, 7),
-        Print("Session finished!!".to_string()),
+        terminal::Clear(terminal::ClearType::CurrentLine),
+        Print(text.to_string()),
         Print("\n\n"),
     )?;
     Ok(())
@@ -113,6 +116,8 @@ fn main() -> io::Result<()> {
             }
         }
 
+        show_footer("Time's up! Take a break! 🎉")?;
+
         for i in 0..=resting_max {
             let work = get_progress_bar_text(working_max as usize, working_max as usize);
             let rest = get_progress_bar_text(i as usize, resting_max as usize);
@@ -123,7 +128,7 @@ fn main() -> io::Result<()> {
         }
 
     }
-    show_footer()?;
+    show_footer("Session Finished!!")?;
 
     Ok(())
 }
