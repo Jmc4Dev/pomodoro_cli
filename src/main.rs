@@ -5,7 +5,8 @@ use std::io::{self, stdout};
 use std::thread::sleep;
 use std::time::Duration;
 
-const WORK_DEFAULT: u8 = 25;
+const MAX_SIZE: usize = 25;
+const WORK_DEFAULT: usize = 25;
 const REST_DEFAULT: u8 = 5;
 const SESSIONS_DEFAULT: u8 = 1;
 const PROGRESS_UNIT: &str = "█";
@@ -16,7 +17,7 @@ const SECONDS_DELAY: u64 = 1;
 #[command(version, about, long_about = None)]
 struct Args {
     /// working minutes
-    #[arg(short, long, default_value_t = WORK_DEFAULT)]
+    #[arg(short, long, default_value_t = WORK_DEFAULT as u8)]
     work: u8,
 
     /// resting minutes
@@ -86,11 +87,17 @@ fn show_progress_bars(work: String, rest: String) -> io::Result<()> {
 }
 
 fn get_progress_bar_text(val: usize, max_val: usize) -> String {
+    let mut corrected_max_val = max_val;
+    let mut corrected_val = val;
+    if max_val > MAX_SIZE {
+        corrected_max_val = MAX_SIZE;
+        corrected_val = max_val - (max_val - ((val * MAX_SIZE) / max_val));
+    }
     // Using the repeat method, we can print a specific number of characters to the stdout
     format!(
         "[{}{}]   {:02} of {:02} minutes left. ",
-        PROGRESS_UNIT.repeat(val),
-        " ".repeat(max_val - val),
+        PROGRESS_UNIT.repeat(corrected_val),
+        " ".repeat(corrected_max_val - corrected_val),
         max_val - val,
         max_val
     )
@@ -126,7 +133,6 @@ fn main() -> io::Result<()> {
                 sleep(Duration::from_secs(SECONDS_DELAY));
             }
         }
-
     }
     show_footer("Session Finished!!")?;
 

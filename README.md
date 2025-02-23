@@ -18,30 +18,31 @@ This **command-line program** that allows users to:
 
 1. **Basic Timer**
     
-    - Use `std::thread::sleep()` to count down time.
-    - Print time remaining every second.
+    [x] Use `std::thread::sleep()` to count down time.
+    [x] Print time remaining every second.
 
 2. **CLI Arguments for Customization**
     
-    - Use `clap` crate to allow users to set custom durations.
+    [x] Use `clap` crate to allow users to set custom durations.
     - Example:
         
 ```bash   
-$ pomodoro --work 30 --break 10
+$ pomodoro --work 30 --rest 10 --sessions 3
 ```
         
 3. **Loop for Multiple Sessions**
     
-    - Run the Pomodoro cycle 4 times before a long break.
-    - Use a simple loop with counters.
+    [x] Run the Pomodoro cycle x times
+
 4. **Terminal UI (Optional but Fun!)**
     
-    - Improve UI with `crossterm` or `ratatui` (formerly `tui`).
-    - Show a progress bar or countdown animation.
+    [x] Improve UI with `crossterm`.
+    [x] Show a progress bar or countdown animation.
+
 5. **Sound or Notification (Optional)**
     
-    - Use `rodio` crate to play a sound when time is up.
-    - Send desktop notifications using `notify-rust`.
+    [ ] Use `rodio` crate to play a sound when time is up.
+    [ ] Send desktop notifications using `notify-rust`.
 
 ---
 
