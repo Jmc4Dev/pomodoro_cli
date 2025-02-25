@@ -34,14 +34,14 @@ $ pomodoro --work 30 --rest 10 --sessions 3
     
     [x] Run the Pomodoro cycle x times
 
-4. **Terminal UI (Optional but Fun!)**
+4. **Terminal UI**
     
     [x] Improve UI with `crossterm`.
     [x] Show a progress bar or countdown animation.
 
-5. **Sound or Notification (Optional)**
+5. **Sound or Notification**
     
-    [ ] Use `rodio` crate to play a sound when time is up.
+    [x] Use `rodio` crate to play a sound when time is up.
     [ ] Send desktop notifications using `notify-rust`.
 
 ---

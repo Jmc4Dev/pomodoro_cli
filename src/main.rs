@@ -1,9 +1,19 @@
+// For the client line arguments
 use clap::Parser;
+
+// For the terminal
 use crossterm::style::{Color, SetForegroundColor, Stylize};
 use crossterm::{cursor, execute, style::Print, terminal};
 use std::io::{self, stdout};
+
+// To manage the time
 use std::thread::sleep;
 use std::time::Duration;
+
+// For the sound
+use std::fs::File;
+use std::io::BufReader;
+use rodio::{Decoder, OutputStream, source::Source};
 
 const MAX_SIZE: usize = 25;
 const WORK_DEFAULT: usize = 25;
@@ -103,6 +113,15 @@ fn get_progress_bar_text(val: usize, max_val: usize) -> String {
     )
 }
 
+fn time_alert(filename: &str) {
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let file = BufReader::new(File::open(filename).unwrap());
+    let source = Decoder::new(file).unwrap();
+    let _ = stream_handle.play_raw(source.convert_samples());
+    std::thread::sleep(std::time::Duration::from_secs(4));
+}
+
+
 fn main() -> io::Result<()> {
     let args = Args::parse();
     let working_max = args.work;
@@ -122,6 +141,7 @@ fn main() -> io::Result<()> {
                 sleep(Duration::from_secs(SECONDS_DELAY));
             }
         }
+        time_alert("resources/school-bell.mp3");
 
         show_footer("Time's up! Take a break! 🎉")?;
 
@@ -133,6 +153,7 @@ fn main() -> io::Result<()> {
                 sleep(Duration::from_secs(SECONDS_DELAY));
             }
         }
+        time_alert("resources/bike-bell.mp3");
     }
     show_footer("Session Finished!!")?;
 
