@@ -42,7 +42,10 @@ $ pomodoro --work 30 --rest 10 --sessions 3
 5. **Sound or Notification**
     
     [x] Use `rodio` crate to play a sound when time is up.
-    [ ] Send desktop notifications using `notify-rust`.
+
+6. **Keyboard Events**
+
+    [x] Allow the user to pause or quit the program typing some key.
 
 ---
 
