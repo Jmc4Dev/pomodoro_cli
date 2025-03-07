@@ -14,16 +14,18 @@ use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
 // For the sound
-use rodio::{source::Source, Decoder, OutputStream};
-use std::fs::File;
-use std::io::BufReader;
+use rodio::{Decoder, OutputStream, Sink};
+use std::io::Cursor;
 
 const MAX_SIZE: usize = 25;
 const WORK_DEFAULT: usize = 25;
 const REST_DEFAULT: u8 = 5;
 const SESSIONS_DEFAULT: u8 = 1;
 const PROGRESS_UNIT: &str = "█";
-const SECONDS_IN_MINUTE: u64 = 2;
+const SECONDS_IN_MINUTE: u64 = 60;
+const TERMINAL_WIDTH: u16 = 42;
+const END_WORKING_TIME: &[u8] = include_bytes!("school-bell.mp3");
+const END_RESTING_TIME: &[u8] = include_bytes!("bike-bell.mp3");
 
 /// Pomodoro Client Application
 #[derive(Parser)]
@@ -42,17 +44,21 @@ struct Args {
     sessions: u8,
 }
 
+fn calculate_position(size: u16) -> u16 {
+    (TERMINAL_WIDTH / 2) - (size / 2)
+}
+
 fn show_header() -> io::Result<()> {
     // run a sequence of instructions on the standard output
     execute!(stdout(), Clear(ClearType::All),)?;
-
+    let text = "Pomodoro Timer";
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        MoveTo(18, 8),
+        MoveTo(0, 8),
         Clear(ClearType::CurrentLine),
-        MoveTo(18, 0),
-        Print("Pomodoro Timer".underlined().bold()),
+        MoveTo(calculate_position(text.len() as u16), 0),
+        Print(text.underlined().bold()),
     )?;
 
     Ok(())
@@ -63,9 +69,9 @@ fn show_sessions(current_session: u8, max_sessions: u8) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        MoveTo(18, 2),
+        MoveTo(calculate_position(sessions_text.len() as u16), 2),
         Print(sessions_text),
-        MoveTo(18, 8),
+        MoveTo(0, 8),
         Clear(ClearType::CurrentLine),
     )?;
     Ok(())
@@ -76,7 +82,7 @@ fn show_message(text: &str) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Blue),
         SetForegroundColor(Color::Blue),
-        MoveTo(12, 7),
+        MoveTo(calculate_position(text.len() as u16), 7),
         Clear(ClearType::CurrentLine),
         Print(text.to_string()),
         Print("\n\n"),
@@ -89,7 +95,7 @@ fn show_footer(text: &str) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Blue),
         SetForegroundColor(Color::Blue),
-        MoveTo(18, 8),
+        MoveTo(calculate_position(text.len() as u16), 8),
         Clear(ClearType::CurrentLine),
         Print(text.to_string()),
         Print("\n\n"),
@@ -129,12 +135,24 @@ fn get_progress_bar_text(val: usize, max_val: usize) -> String {
     )
 }
 
-fn time_alert(filename: &str) {
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let file = BufReader::new(File::open(filename).unwrap());
-    let source = Decoder::new(file).unwrap();
-    let _ = stream_handle.play_raw(source.convert_samples());
-    std::thread::sleep(std::time::Duration::from_secs(4));
+fn play_sound(sound_data: &[u8]) {
+    // Create an audio output stream
+    let (_stream, stream_handle) =
+        OutputStream::try_default().expect("Failed to create output stream");
+
+    // Create a sink to manage playback
+    let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
+
+    // Clone sound_data into a Vec<u8> to own the data
+    let sound_data_owned = sound_data.to_vec();
+    let cursor = Cursor::new(sound_data_owned);
+
+    // Decode the audio file
+    let source = Decoder::new(cursor).expect("Failed to decode audio");
+
+    // Play the sound
+    sink.append(source);
+    sink.sleep_until_end(); // Wait until playback finishes
 }
 
 fn main() -> io::Result<()> {
@@ -206,7 +224,7 @@ fn main() -> io::Result<()> {
                 show_progress_bars(work, rest)?;
                 if minutes >= working_max {
                     show_footer("Time's up! Take a break! 🎉")?;
-                    time_alert("resources/school-bell.mp3");
+                    play_sound(END_WORKING_TIME);
                     is_work_time = !is_work_time;
                     minutes = 0;
                 }
@@ -217,12 +235,12 @@ fn main() -> io::Result<()> {
                 if minutes >= resting_max {
                     let session_text = format!("Session {} Finished!!", current_session);
                     show_footer(&session_text)?;
-                    time_alert("resources/bike-bell.mp3");
+                    play_sound(END_RESTING_TIME);
                     current_session += 1;
                     is_work_time = !is_work_time;
                     minutes = 0;
                     if current_session > max_sessions {
-                        execute!(stdout(), MoveTo(0, 7), Clear(ClearType::CurrentLine), )?;
+                        execute!(stdout(), MoveTo(0, 7), Clear(ClearType::CurrentLine),)?;
                         show_footer("See You Soon!!\n")?;
                         sleep(Duration::from_secs(5));
                         break;

@@ -38,10 +38,12 @@ $ pomodoro --work 30 --rest 10 --sessions 3
     
     [x] Improve UI with `crossterm`.
     [x] Show a progress bar or countdown animation.
+    [x] Center messages into the terminal.
 
 5. **Sound or Notification**
     
     [x] Use `rodio` crate to play a sound when time is up.
+    [x] Embed the sound files inside the executable using the include_bytes! macro.
 
 6. **Keyboard Events**
 
